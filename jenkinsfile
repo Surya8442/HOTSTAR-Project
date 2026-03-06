@@ -1,21 +1,26 @@
 pipeline {
     agent any
 
+    triggers {
+        githubPush()
+    }
+
     environment {
-        DOCKER_USER     = "kranthi6166"            // ✅ your DockerHub username
-        IMAGE_NAME      = "java-project-maven-new" // ✅ project image name
-        IMAGE_TAG       = "latest"
-        CONTAINER_NAME  = "HOTSTAR-CONTAINER"
+        DOCKER_USER = "surya8442"
+        IMAGE_NAME = "hotstar_img"
+        IMAGE_TAG = "latest"
+        CONTAINER_NAME = "hotstar_cont"
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/Naveen1-6/HOTSTAR-Project.git'
+                git branch: 'main', url: 'https://github.com/Surya8442/HOTSTAR-Project.git'
             }
         }
 
-        stage('Build App') {
+        stage('Build Maven Project') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
@@ -24,49 +29,38 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    echo "Building Docker image..."
-                    docker build -t ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} .
+                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
                 '''
             }
         }
 
-        stage('Run Container (Local Test)') {
+        stage('Stop Old Container') {
             steps {
                 sh '''
-                    echo "Running container locally..."
-                    docker rm -f ${CONTAINER_NAME} || true
-                    docker run -d --name ${CONTAINER_NAME} -p 8085:8080 ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
-                    sleep 5
-                    docker logs ${CONTAINER_NAME}
+                docker rm -f ${CONTAINER_NAME} || true
                 '''
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Run New Container') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub_creds', usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKER_HUB_PASS')]) {
+                sh '''
+                docker run -d -p 1900:8080 --name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Push Image to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'Docker_cred', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     sh '''
-                        echo "Logging in to DockerHub..."
-                        echo "$DOCKER_HUB_PASS" | docker login -u "$DOCKER_HUB_USER" --password-stdin
-                        docker tag ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    echo "$PASS" | docker login -u "$USER" --password-stdin
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
                     '''
                 }
             }
         }
 
-        stage('Deploy to Docker Swarm') {
-            steps {
-                sh '''
-                    echo "Deploying to Docker Swarm..."
-                    docker service rm hotstar-service || true
-                    docker service create \
-                        --name hotstar-service \
-                        --publish 8085:8080 \
-                        --replicas 3 \
-                        ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
-                '''
-            }
-        }
     }
 }
