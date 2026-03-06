@@ -21,7 +21,7 @@
     <nav class="navbar">
         <img src="./assets/img/logo (1).svg" class="logo" alt="Logo">
         <ul class="nav-links">
-            <li class="nav-items"><a href="#">TV</a></li>
+            <li class="nav-items"><a href="#">television</a></li>
             <li class="nav-items"><a href="#">move</a></li>
             <li class="nav-items"><a href="#">Sports</a></li>
             <li class="nav-items"><a href="#">Premium</a></li>
